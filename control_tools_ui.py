@@ -31,6 +31,10 @@ class control_tools_ui:
         cmds.button(parent=column, label="Create Controls", command=lambda *x: self.create_controls_cmd())
         cmds.button(parent=column, label="Create Controls From Hierarchy",
                     command=lambda *x: self.create_controls_hierarchy_cmd())
+        cmds.button(parent=column, label="Parent Constrain Controls", command=lambda *x: self.parent_constrain_controls_cmd())
+        cmds.button(parent=column, label="Parent Scale Constraints", command=lambda *x: self.parent_scale_constraints_cmd())
+        cmds.button(parent=column, label="Auto Constrain Joints to Selected Controls", command=lambda *x: self.auto_constrain_joints_to_selected_controls_cmd())
+        cmds.button(parent=column, label="Mirror Controls", command=lambda *x: self.mirror_controls_cmd())
 
         self.show()
 
@@ -84,3 +88,27 @@ class control_tools_ui:
         importlib.reload(control_tools)
 
         control_tools.change_control_radius(radius=self.get_control_radius())
+
+    def parent_constrain_controls_cmd(self):
+        import control_tools
+        importlib.reload(control_tools)
+
+        control_tools.parent_constrain_controls()
+
+    def parent_scale_constraints_cmd(self):
+        import control_tools
+        importlib.reload(control_tools)
+
+        control_tools.parent_scale_constraints()
+
+    def auto_constrain_joints_to_selected_controls_cmd(self):
+        import control_tools
+        importlib.reload(control_tools)
+
+        control_tools.auto_constrain_joints_to_selected_controls()
+
+    def mirror_controls_cmd(self):
+        import control_tools
+        importlib.reload(control_tools)
+
+        control_tools.mirror_controls()

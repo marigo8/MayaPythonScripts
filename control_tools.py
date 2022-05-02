@@ -66,3 +66,117 @@ def change_control_radius(radius=1):
     sels = cmds.ls(sl=True)
     for sel in sels:
         cmds.circle(sel, edit=True, radius=radius)
+
+def parent_constrain_controls():
+    # Set up variables
+    sels = cmds.ls(sl=True)
+    constraint_target = sels[len(sels)-1]
+
+    for i in range(len(sels)):
+        if i >= len(sels)-1:
+            break
+
+        ctrl = sels[i]
+
+        ctrl_grp = cmds.listRelatives(ctrl, parent=True)[0]
+
+        # Create Constraints
+        t_constraint = cmds.parentConstraint(constraint_target,
+                                             ctrl_grp,
+                                             maintainOffset=True,
+                                             skipRotate=["x", "y", "z"],
+                                             weight=1)[0]
+        r_constraint = cmds.parentConstraint(constraint_target,
+                                             ctrl_grp,
+                                             maintainOffset=True,
+                                             skipTranslate=["x", "y", "z"],
+                                             weight=1)[0]
+
+        # Create Attributes
+        t_attr = "FollowTranslate"
+        if not cmds.objExists(f"{ctrl}.{t_attr}"):
+            cmds.addAttr(ctrl,
+                         longName=t_attr,
+                         attributeType="double",
+                         min=0,
+                         max=1,
+                         defaultValue=1)
+        t_attr = f"{ctrl}.{t_attr}"
+        cmds.setAttr(t_attr, e=True, keyable=True)
+
+        r_attr = "FollowRotate"
+        if not cmds.objExists(f"{ctrl}.{r_attr}"):
+            cmds.addAttr(ctrl,
+                         longName=r_attr,
+                         attributeType="double",
+                         min=0,
+                         max=1,
+                         defaultValue=1)
+        r_attr = f"{ctrl}.{r_attr}"
+        cmds.setAttr(r_attr, e=True, keyable=True)
+
+        # Connect Attributes
+        cmds.connectAttr(t_attr,
+                         f"{t_constraint}.w0",
+                         force=True)
+        cmds.connectAttr(r_attr,
+                         f"{r_constraint}.w0",
+                         force=True)
+
+def parent_scale_constraints():
+    sels = cmds.ls(sl=True)
+
+    child = sels[0]
+    parent = sels[1]
+    cmds.parentConstraint(parent, child, maintainOffset=True, weight=1)
+    cmds.scaleConstraint(parent, child, maintainOffset=True, weight=1)
+
+def auto_constrain_joints_to_selected_controls():
+    sels = cmds.ls(sl=True)
+
+    for control in sels:
+        if control.count("_") > 0:
+            name_parts = control.rpartition("_")
+            if name_parts[2] == "Ctrl":
+                joint = name_parts[0] + "_Jnt"
+                cmds.parentConstraint(control, joint, maintainOffset=True, weight=1)
+                cmds.scaleConstraint(control, joint, maintainOffset=True, weight=1)
+
+def mirror_controls():
+    sels = cmds.ls(sl=True)
+
+    # for each selected control...
+    for control in sels:
+        if control.count("_") > 0:
+            name_parts = control.rpartition("_")
+            if name_parts[2] == "Ctrl":
+                # duplicate the control's group
+                group = control + "_Grp"
+                original_prefix = "L_"
+                new_prefix = "R_"
+                if "R_" in group:
+                    original_prefix = "R_"
+                    new_prefix = "L_"
+
+                duplicate_grp = cmds.duplicate(group, name=group.replace(original_prefix, new_prefix), returnRootsOnly=True)[0]
+
+                # rename duplicated control and
+                # delete everything else that what duplicated (constraints, IK handles, etc)
+                duplicate_children = cmds.listRelatives(duplicate_grp, children=True)
+                for child in duplicate_children:
+                    if child.count("_") > 0:
+                        name_parts = child.rpartition("_")
+                        if name_parts[2] == "Ctrl":
+                            child = cmds.rename(duplicate_grp+"|"+child, child.replace(original_prefix, new_prefix))
+                        else:
+                            cmds.delete(duplicate_grp+"|"+child)
+
+                # match transforms to joint
+                joint = duplicate_grp.rpartition("_Ctrl_Grp")[0] + "_Jnt"
+                cmds.matchTransform(duplicate_grp, joint)
+
+                # inverse scale
+                cmds.scale(-1, -1, -1, duplicate_grp)
+
+                # freeze scale
+                cmds.makeIdentity(duplicate_grp, apply=True, scale=True)
